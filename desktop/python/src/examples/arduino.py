@@ -56,3 +56,50 @@ INPUT = 0x0
 OUTPUT = 0x1
 INPUT_PULLUP = 0x2
 LED_BUILTIN = 13
+
+
+def _test() -> str:
+    from serialcmd.streams.serials import Serial
+    ports = Serial.getPorts()
+    print(f"{ports=}")
+
+    if len(ports) == 0:
+        return "Нет доступных портов"
+
+    arduino = ArduinoProtocol(Serial(ports[0], 115200))
+
+    # print("\n".join(map(str, arduino.getCommands())))
+
+    startup = arduino.begin()
+
+    if startup != 0x01:
+        return f"Недействительный код инициализации {startup=}"
+
+    print(f"Пакет ответа инициализации ведомого устройства: {startup=}")
+
+    #
+
+    arduino.pinMode(LED_BUILTIN, OUTPUT)
+
+    print(f"{arduino.digitalWrite(LED_BUILTIN, True)=}")
+    # print(f"{arduino.digitalWrite(100, True)=}")
+
+    # def _blink():
+    #     arduino.digitalWrite(LED_BUILTIN, True)
+    #     arduino.digitalWrite(LED_BUILTIN, False)
+    #
+    # def _test():
+    #     # arduino.delay(500)
+    #
+    #     print(arduino.millis())
+    #
+    #     return
+    #
+    # def calc(f: Callable[[], None], n: int = 1000) -> float:
+    #     return timeit.timeit(f, number=n) / n
+    #
+    # # t = calc(_blink)
+    # t = calc(_test, 10)
+    # print(f"{t * 1000.0} ms ({1 / t})")
+
+    return "Успешное завершение"

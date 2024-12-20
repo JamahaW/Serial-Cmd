@@ -137,10 +137,10 @@ private:
     const Encoder encoder;
     PID position_regulator;
 
+public:
     explicit PositionServo(Motor &&motor, Encoder &&encoder, PID &&pid) :
         motor{motor}, encoder{encoder}, position_regulator{pid} {}
 
-public:
     inline const Encoder &getEncoder() {
         return encoder;
     }
