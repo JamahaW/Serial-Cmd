@@ -83,9 +83,13 @@ class Serializer[T: Serializable](ABC):
         """Записать значение в стрим"""
         stream.write(self.pack(value))
 
+    def readBytes(self, stream: Stream) -> bytes:
+        """Считать размер упаковщика"""
+        return stream.read(self.getSize())
+
     def read(self, stream: Stream) -> T:
         """Считать значение из стрима"""
-        return self.unpack(stream.read(self.getSize()))
+        return self.unpack(self.readBytes(stream))
 
     def getSize(self) -> int:
         """Получить размер данных в байтах"""

@@ -3,15 +3,15 @@ from typing import Optional
 
 from serialcmd.core.instruction import Instruction
 from serialcmd.core.respond import RespondPolicy
-from serialcmd.core.result import Result
-from serialcmd.errorenum import ErrorEnum
+from serialcmd.result import Result
+from serialcmd.resultenum import ResultEnum
 from serialcmd.serializers import Serializable
 from serialcmd.serializers import Serializer
 from serialcmd.streams.abc import Stream
 
 
 @dataclass(frozen=True)
-class Command[S: Serializable, R: Serializable, E: ErrorEnum]:
+class Command[S: Serializable, R: Serializable, E: ResultEnum]:
     """Команда (Возвращающая результат инструкция)"""
 
     instruction: Instruction[S]
@@ -38,12 +38,12 @@ def _test():
     from serialcmd.streams.mock import MockStream
     from io import BytesIO
 
-    class TestErr(ErrorEnum):
+    class TestErr(ResultEnum):
         ok = 0x00
         bad = 0x69
 
         @classmethod
-        def getOk(cls) -> ErrorEnum:
+        def getOk(cls) -> ResultEnum:
             return cls.ok
 
     _out = BytesIO()

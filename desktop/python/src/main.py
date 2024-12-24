@@ -4,7 +4,7 @@ from serialcmd.streams.serials import Serial
 
 def _launch() -> str:
     ports = Serial.getPorts()
-    print(f"{ports=}")
+    print(f"{ports}")
 
     if len(ports) == 0:
         return "Нет доступных портов"
@@ -16,9 +16,9 @@ def _launch() -> str:
     startup = motor_encoder.begin()
 
     if startup != 0x01:
-        return f"Недействительный код инициализации {startup=}"
+        return f"Недействительный код инициализации {startup}"
 
-    print(f"Пакет ответа инициализации ведомого устройства: {startup=}")
+    print(f"Пакет ответа инициализации ведомого устройства: {startup}")
 
 
 if __name__ == '__main__':
