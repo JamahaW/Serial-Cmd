@@ -2,10 +2,10 @@
 Пример протокола для базовых функций Ардуино
 """
 
-from serialcmd.core.respond import RespondPolicy
+from serialcmd.policy.respond import RespondPolicy
 from serialcmd.result import Result
 from serialcmd.resultenum import ResultEnum
-from serialcmd.master.protocol import Protocol
+from serialcmd.protocol.master import MasterProtocol
 from serialcmd.serializers import Struct
 from serialcmd.serializers import u32
 from serialcmd.serializers import u8
@@ -20,7 +20,7 @@ class ArduinoResult(ResultEnum):
     """Произошла ошибка"""
 
 
-class ArduinoProtocol(Protocol[ArduinoResult, bool]):
+class ArduinoMasterProtocol(MasterProtocol[ArduinoResult, bool]):
     """Пример подключения к Arduino с минимальным набором команд"""
 
     def __init__(self, stream: Stream) -> None:
@@ -66,7 +66,7 @@ def _test() -> str:
     if len(ports) == 0:
         return "Нет доступных портов"
 
-    arduino = ArduinoProtocol(Serial(ports[0], 115200))
+    arduino = ArduinoMasterProtocol(Serial(ports[0], 115200))
 
     # print("\n".join(map(str, arduino.getCommands())))
 

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from serialcmd.core.instruction import Instruction
-from serialcmd.core.respond import RespondPolicy
+from serialcmd.policy.respond import RespondPolicy
 from serialcmd.result import Result
 from serialcmd.resultenum import ResultEnum
 from serialcmd.serializers import Serializable

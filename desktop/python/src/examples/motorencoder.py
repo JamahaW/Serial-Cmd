@@ -1,7 +1,7 @@
-from serialcmd.core.respond import RespondPolicy
+from serialcmd.policy.respond import RespondPolicy
 from serialcmd.result import Result
 from serialcmd.resultenum import ResultEnum
-from serialcmd.master.protocol import Protocol
+from serialcmd.protocol.master import MasterProtocol
 from serialcmd.serializers import i16
 from serialcmd.serializers import i32
 from serialcmd.serializers import u8
@@ -17,7 +17,7 @@ class MotorEncoderResult(ResultEnum):
         return cls.ok
 
 
-class MotorEncoderProtocol(Protocol[MotorEncoderResult, bool]):
+class MotorEncoderMasterProtocol(MasterProtocol[MotorEncoderResult, bool]):
 
     def __init__(self, stream: Stream) -> None:
         super().__init__(RespondPolicy(MotorEncoderResult, u8), u8, stream, u8)

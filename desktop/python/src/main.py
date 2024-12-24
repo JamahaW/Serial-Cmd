@@ -1,4 +1,4 @@
-from examples.motorencoder import MotorEncoderProtocol
+from examples.motorencoder import MotorEncoderMasterProtocol
 from serialcmd.streams.serials import Serial
 
 
@@ -9,7 +9,7 @@ def _launch() -> str:
     if len(ports) == 0:
         return "Нет доступных портов"
 
-    motor_encoder = MotorEncoderProtocol(Serial(ports[0], 115200))
+    motor_encoder = MotorEncoderMasterProtocol(Serial(ports[0], 115200))
 
     print("\n".join(map(str, motor_encoder.getCommands())))
 

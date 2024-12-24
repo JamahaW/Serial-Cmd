@@ -1,42 +1,52 @@
+from dataclasses import dataclass
 from typing import Iterable
 from typing import Optional
 
-from serialcmd.master.bind import CommandBind
 from serialcmd.core.command import Command
 from serialcmd.core.instruction import Instruction
-from serialcmd.core.respond import RespondPolicy
+from serialcmd.policy.connect import ConnectPolicy
+from serialcmd.policy.respond import RespondPolicy
+from serialcmd.result import Result
 from serialcmd.resultenum import ResultEnum
-from serialcmd.serializers import Primitive
 from serialcmd.serializers import Serializable
 from serialcmd.serializers import Serializer
 from serialcmd.streams.abc import Stream
 
 
-class Protocol[E: type[ResultEnum], T: Serializable]:
+@dataclass(frozen=True)
+class CommandBind[S: Serializable, R: Serializable, E: ResultEnum]:
+    """Ассоциированная с потоком Команда"""
+
+    _command: Command[S, R, E]
+    """Исполняемая команда"""
+    _stream: Stream
+    """Привязанный стрим"""
+
+    def send(self, value: S) -> Result[R, E]:
+        """Отправить команду в поток"""
+        return self._command.send(self._stream, value)
+
+    def __str__(self) -> str:
+        return f"({self._stream}) <-> {self._command}"
+
+
+class MasterProtocol[E: type[ResultEnum], P: Serializable, S: Serializable]:
     """Протокол - набор команд для последовательной связи"""
 
     def __init__(
             self,
-            respond_policy:
-            RespondPolicy[E],
-            command_code_primitive: Primitive,
             stream: Stream,
-            startup_package: Serializer[T]
+            connect_policy: ConnectPolicy[P, S],
+            respond_policy: RespondPolicy[E]
     ) -> None:
-        """
-        @param respond_policy: Политика обработки ответов
-        @param command_code_primitive: Примитивный тип упаковки индексов команд
-        @param stream: Стрим (Канал связи)
-        """
-        self._commands = list[CommandBind]()
-        self._respond_policy = respond_policy
-        self._command_code_primitive = command_code_primitive
         self._stream = stream
-        self._startup_package = startup_package
+        self._respond_policy = respond_policy
+        self._connect_policy = connect_policy
+        self._commands = list[CommandBind]()
 
-    def begin(self) -> T:
+    def begin(self) -> S:
         """Начать общение с slave устройством"""
-        return self._startup_package.read(self._stream)
+        return self._connect_policy.startup_serializer.read(self._stream)
 
     def addCommand[S: Serializable, R: Serializable](
             self, name: str,
@@ -49,10 +59,7 @@ class Protocol[E: type[ResultEnum], T: Serializable]:
         @param signature: Сигнатура (типы) входных аргументов
         @param returns: тип выходного значения
         """
-        ret = CommandBind(
-            Command(Instruction(self._getNextInstructionCode(), signature, name), returns, self._respond_policy),
-            self._stream
-        )
+        ret = CommandBind(Command(Instruction(self._getNextInstructionCode(), signature, name), returns, self._respond_policy), self._stream)
         self._commands.append(ret)
         return ret
 
@@ -61,7 +68,7 @@ class Protocol[E: type[ResultEnum], T: Serializable]:
         return self._commands
 
     def _getNextInstructionCode(self) -> bytes:
-        return self._command_code_primitive.pack(len(self._commands))
+        return self._connect_policy.command_code.pack(len(self._commands))
 
 
 def _test():
@@ -100,7 +107,7 @@ def _test():
     _in.seek(0)
     stream = MockStream(_in, _out)
 
-    protocol = Protocol[TestError, bool](RespondPolicy(TestError, u8), u8, stream, u8)
+    protocol = MasterProtocol[TestError, bool](RespondPolicy(TestError, u8), u8, stream, u8)
 
     cmd_1 = protocol.addCommand("cmd_1", None, None)
     cmd_2 = protocol.addCommand("cmd_2", u8, None)

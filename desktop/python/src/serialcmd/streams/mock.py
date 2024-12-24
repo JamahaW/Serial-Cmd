@@ -1,5 +1,7 @@
 from dataclasses import dataclass
+from time import sleep
 from typing import BinaryIO
+from typing import Final
 
 from serialcmd.streams.abc import Stream
 
@@ -13,11 +15,26 @@ class MockStream(Stream):
     output: BinaryIO
     """Выходной поток"""
 
+    BYTE_WAIT_DURATION: Final[int] = 0.001
+
+    # TODO сделать двухстороннюю коммуникацию
+
     def write(self, data: bytes) -> None:
         self.output.write(data)
 
     def read(self, size: int = 1) -> bytes:
-        return self.input.read(size)
+        ret = bytearray()
+
+        while len(ret) < size:
+            chunk = self.input.read(size - len(ret))
+
+            if not chunk:
+                sleep(self.BYTE_WAIT_DURATION)
+
+            else:
+                ret.extend(chunk)
+
+        return bytes(ret)
 
     def __str__(self) -> str:
         return f"MockStream@{id(self):x}"
