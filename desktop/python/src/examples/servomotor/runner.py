@@ -15,9 +15,8 @@ class Runner(Application):
 
 
 def _test():
-    from serialcmd.streams.mock import MockStream
-    from io import BytesIO
-    Runner(ServoMotorMasterProtocol(MockStream(BytesIO(), BytesIO()))).run("Runner-Test", (1600, 900))
+    from serialcmd.streams.stub import StubStream
+    Runner(ServoMotorMasterProtocol(StubStream())).run("Runner-Test", (1600, 900))
 
 
 if __name__ == '__main__':
