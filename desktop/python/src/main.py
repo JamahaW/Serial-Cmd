@@ -1,10 +1,11 @@
 from time import sleep
 
-from examples.motorencoder import MotorEncoderMasterProtocol
+from examples.servomotor.protocol import ServoMotorMasterProtocol
+from examples.servomotor.runner import Runner
 from serialcmd.streams.serials import Serial
 
 
-def _run_test_0(motor_encoder: MotorEncoderMasterProtocol) -> None:
+def _run_test_0(motor_encoder: ServoMotorMasterProtocol) -> None:
     import keyboard
 
     pwm_set: int = 0
@@ -33,7 +34,7 @@ def _run_test_0(motor_encoder: MotorEncoderMasterProtocol) -> None:
             break
 
 
-def _run_test_1(motor_encoder: MotorEncoderMasterProtocol) -> None:
+def _run_test_1(motor_encoder: ServoMotorMasterProtocol) -> None:
     import keyboard
 
     pos_set: int = 0
@@ -82,18 +83,18 @@ def _launch() -> str:
     if len(ports) == 0:
         return "Нет доступных портов"
 
-    motor_encoder = MotorEncoderMasterProtocol(Serial(ports[0], 115200))
+    servomotor = ServoMotorMasterProtocol(Serial(ports[0], 115200))
 
-    print("\n".join(map(str, motor_encoder.getCommands())))
+    print("\n".join(map(str, servomotor.getCommands())))
 
-    startup = motor_encoder.begin()
+    startup = servomotor.begin()
 
     if startup != 0x01:
         return f"Недействительный код инициализации {startup}"
 
     print(f"Пакет ответа инициализации ведомого устройства: {startup}")
 
-    _run_test_1(motor_encoder)
+    Runner(servomotor).run("Serial-Cmd", (1600, 900))
 
     return "Успешное завершение"
 
