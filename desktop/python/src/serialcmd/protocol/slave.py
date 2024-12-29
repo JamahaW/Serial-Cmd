@@ -30,7 +30,7 @@ class SlaveProtocol[S: Serializable, P: Serializable]:
         self._stream = stream
         self._connect_policy = connect_policy
 
-        self._commands = self._genCommandTable(self._connect_policy.command_code)
+        self._commands = self._genCommandTable(self._connect_policy.command_code_primitive)
         self._command_index_max = len(self._commands) - 1
 
     def begin(self, data: P) -> None:
@@ -42,7 +42,7 @@ class SlaveProtocol[S: Serializable, P: Serializable]:
 
     def pull(self) -> None:
         """Обработка принимаемых в порт команд от master"""
-        command_index = self._connect_policy.command_code.read(self._stream)
+        command_index = self._connect_policy.command_code_primitive.read(self._stream)
 
         if command_index > self._command_index_max:
             return

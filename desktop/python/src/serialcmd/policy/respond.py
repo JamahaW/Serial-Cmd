@@ -9,7 +9,7 @@ from serialcmd.serializers import Serializer
 from serialcmd.streams.abc import Stream
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class RespondPolicy[E: ResultEnum]:
     """Политика обработки ответа"""
 

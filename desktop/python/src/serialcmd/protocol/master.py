@@ -68,7 +68,7 @@ class MasterProtocol[E: type[ResultEnum], P: Serializable, S: Serializable]:
         return self._commands
 
     def _getNextInstructionCode(self) -> bytes:
-        return self._connect_policy.command_code.pack(len(self._commands))
+        return self._connect_policy.command_code_primitive.pack(len(self._commands))
 
 
 def _test():
