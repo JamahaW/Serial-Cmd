@@ -4,7 +4,7 @@ from examples.motorencoder import MotorEncoderMasterProtocol
 from serialcmd.streams.serials import Serial
 
 
-def _run(motor_encoder: MotorEncoderMasterProtocol) -> None:
+def _run_test_0(motor_encoder: MotorEncoderMasterProtocol) -> None:
     import keyboard
 
     pwm_set: int = 0
@@ -33,6 +33,48 @@ def _run(motor_encoder: MotorEncoderMasterProtocol) -> None:
             break
 
 
+def _run_test_1(motor_encoder: MotorEncoderMasterProtocol) -> None:
+    import keyboard
+
+    pos_set: int = 0
+    pk = 0.3
+
+    def _clamp(new_val, rg):
+        clam = min(rg, max(-rg, new_val))
+        return clam
+
+    def _update_target_pos(d: int):
+        nonlocal pos_set
+        pos_set = _clamp(pos_set + d, 100000)
+
+    def _calc_pid(_in: int) -> int:
+        err = pos_set - _in
+        u = int(err * pk)
+        return u
+
+    while True:
+
+        try:
+            sleep(0.05)
+            if keyboard.is_pressed("up"):
+                _update_target_pos(1000)
+
+            if keyboard.is_pressed("down"):
+                _update_target_pos(-1000)
+
+            position = motor_encoder.getEncoderPosition().unwrap()
+            speed = motor_encoder.getEncoderSpeed().unwrap()
+
+            new_speed = _calc_pid(position)
+            motor_encoder.setMotorSpeed(_clamp(new_speed, 255))
+
+            print(f"\r{position=:.>10} (тик) {speed=:.>5} (тик / мс) {pos_set=:.>10} (тик)", end="")
+
+        except KeyboardInterrupt:
+            motor_encoder.setMotorSpeed(0)
+            break
+
+
 def _launch() -> str:
     ports = Serial.getPorts()
     print(f"{ports}")
@@ -51,7 +93,7 @@ def _launch() -> str:
 
     print(f"Пакет ответа инициализации ведомого устройства: {startup}")
 
-    _run(motor_encoder)
+    _run_test_1(motor_encoder)
 
     return "Успешное завершение"
 
