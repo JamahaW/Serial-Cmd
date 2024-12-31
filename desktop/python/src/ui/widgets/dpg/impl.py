@@ -8,13 +8,11 @@ from typing import Sequence
 
 from dearpygui import dearpygui as dpg
 
-Vertices = tuple[Iterable[float], Iterable[float]]
-
+from ui.color import DRAG_LINE
 from ui.widgets.abc import Color3i
 from ui.widgets.abc import Container
 from ui.widgets.abc import ItemID
 from ui.widgets.abc import Placeable
-from ui.color import DRAG_LINE
 from ui.widgets.dpg.abc import DPGItem
 from ui.widgets.dpg.abc import RangedDPGItem
 from ui.widgets.dpg.abc import VariableDPGItem
@@ -23,13 +21,13 @@ from ui.widgets.dpg.abc import VariableDPGItem
 class Group(DPGItem, Container, Placeable):
     """Группа элементов"""
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, *, is_horizontal: bool = False) -> None:
         super().__init__()
-        self.__kwargs = kwargs
+        self.__is_horizontal = is_horizontal
 
     def placeRaw(self, parent_id: ItemID) -> None:
-        self.setItemID(dpg.add_group(parent=parent_id, **self.__kwargs))
-        del self.__kwargs
+        self.setItemID(dpg.add_group(parent=parent_id, horizontal=self.__is_horizontal))
+        del self.__is_horizontal
 
 
 class CollapsingHeader(Container, DPGItem, Placeable):
@@ -58,10 +56,28 @@ class Menu(Container, DPGItem, Placeable):
 
 class Plot(Container, DPGItem, Placeable):
 
+    def __init__(
+            self, *,
+            equal_aspects: bool = True,
+            size: tuple[int, int] = (-1, -1)
+    ) -> None:
+        super().__init__()
+        self.__equal_aspects = equal_aspects
+        self.__size = size
+
     def placeRaw(self, parent_id: ItemID) -> None:
-        with dpg.plot(width=-1, height=-1, equal_aspects=True, anti_aliased=True, parent=parent_id) as plot:
+        w, h = self.__size
+        with dpg.plot(
+                width=w,
+                height=h,
+                equal_aspects=self.__equal_aspects,
+                anti_aliased=True,
+                parent=parent_id,
+        ) as plot:
             self.setItemID(plot)
             dpg.add_plot_legend(outside=True)
+        del self.__equal_aspects
+        del self.__size
 
 
 class Text(VariableDPGItem[str], Placeable):
@@ -205,8 +221,12 @@ class Axis(DPGItem, Placeable, Container):
         self.setItemID(dpg.add_plot_axis(self.__type, parent=parent_id))
         del self.__type
 
+    def setLimit(self, _min: float, _max: float) -> None:
+        """Установить ограничение"""
+        dpg.set_axis_limits(self.getItemID(), _min, _max)
 
-class LineSeries(VariableDPGItem[Vertices], Placeable, Container):
+
+class LineSeries(VariableDPGItem[tuple[Iterable[float], Iterable[float]]], Placeable):
 
     def __init__(self, label: str = None) -> None:
         super().__init__()
@@ -286,3 +306,60 @@ class InputInt(RangedDPGItem[int], Placeable):
         del self.__step_fast
         del self.__step
         del self.__callback
+
+
+class InputFloat(RangedDPGItem[float], Placeable):
+
+    def __init__(
+            self,
+            label: str,
+            on_change: Callable[[float], None] = None,
+            *,
+            width: int = 100,
+            value_range: tuple[float, float] = (0.0, 1.0),
+            default_value: float = 0,
+            step: float = 0.1,
+            step_fast: float = 5
+    ) -> None:
+        super().__init__()
+        self.__label = label
+        self.__width = width
+        self.__min_value, self.__max_value = value_range
+        self.__default_value = default_value
+        self.__step = step
+        self.__step_fast = step_fast
+        self.__callback = None if on_change is None else lambda: on_change(self.getValue())
+
+    def placeRaw(self, parent_id: ItemID) -> None:
+        self.setItemID(dpg.add_input_float(
+            parent=parent_id,
+            step_fast=self.__step_fast,
+            label=self.__label,
+            width=self.__width,
+            min_value=self.__min_value,
+            max_value=self.__max_value,
+            default_value=self.__default_value,
+            step=self.__step,
+            callback=self.__callback,
+            max_clamped=True,
+            min_clamped=True,
+        ))
+        del self.__label
+        del self.__width
+        del self.__min_value
+        del self.__max_value
+        del self.__default_value,
+        del self.__step_fast
+        del self.__step
+        del self.__callback
+
+
+class Tab(Container, Placeable, DPGItem):
+
+    def __init__(self, label: str) -> None:
+        super().__init__()
+        self.__label = label
+
+    def placeRaw(self, parent_id: ItemID) -> None:
+        self.setItemID(dpg.add_tab(parent=parent_id, label=self.__label))
+        del self.__label

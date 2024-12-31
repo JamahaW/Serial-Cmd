@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from threading import Lock
 from typing import Iterable
 from typing import Optional
 
@@ -21,45 +22,71 @@ class CommandBind[S: Serializable, R: Serializable, E: ResultEnum]:
     """Исполняемая команда"""
     _stream: Stream
     """Привязанный стрим"""
+    _mutex: Lock
+    """Мьютекс для корректной работы команды в многопоточном режиме"""
 
     def send(self, value: S) -> Result[R, E]:
         """Отправить команду в поток"""
-        return self._command.send(self._stream, value)
+        self._mutex.acquire()
+        result = self._command.send(self._stream, value)
+        self._mutex.release()
+        return result
 
     def __str__(self) -> str:
         return f"({self._stream}) <-> {self._command}"
 
 
-class MasterProtocol[E: type[ResultEnum], P: Serializable, S: Serializable]:
+class _SupportAddCommands[E: type[ResultEnum], P: Serializable, T: Serializable]:
+    """Поддерживает добавление команд"""
+    type SerRet[S: Serializable] = Optional[Serializer[S]]
+
+    def addCommand[S: Serializable, R: Serializable](
+            self,
+            name: str,
+            signature: SerRet[S],
+            returns: SerRet[R]
+    ) -> CommandBind[S, R, E]:
+        """
+        Добавить команду
+        @param name: Наименование команды для отладки
+        @param signature: Сигнатура входных аргументов
+        @param returns: Возвращаемое значение
+        """
+
+    def addSetter[S: Serializable](self, name: str, signature: SerRet[S]) -> CommandBind[S, None, E]:
+        """
+        Добавить setter-команду
+        @param name: Наименование команды для отладки
+        @param signature: Сигнатура входных аргументов
+        """
+        return self.addCommand(f"set_{name}", signature, None)
+
+    def addGetter[R: Serializable](self, name: str, returns: SerRet[R]) -> CommandBind[None, R, E]:
+        """
+        Добавить getter-команду
+        @param name:
+        @param returns:
+        @return:
+        """
+        return self.addCommand(f"get_{name}", None, returns)
+
+
+class MasterProtocol[E: type[ResultEnum], P: Serializable, T: Serializable](_SupportAddCommands[E, P, T]):
     """Протокол - набор команд для последовательной связи"""
 
-    def __init__(
-            self,
-            stream: Stream,
-            connect_policy: ConnectPolicy[P, S],
-            respond_policy: RespondPolicy[E]
-    ) -> None:
+    def __init__(self, stream: Stream, connect_policy: ConnectPolicy[P, T], respond_policy: RespondPolicy[E]) -> None:
         self._stream = stream
         self._respond_policy = respond_policy
         self._connect_policy = connect_policy
         self._commands = list[CommandBind]()
+        self._mutex = Lock()
 
-    def begin(self) -> S:
+    def begin(self) -> T:
         """Начать общение с slave устройством"""
         return self._connect_policy.startup_serializer.read(self._stream)
 
-    def addCommand[S: Serializable, R: Serializable](
-            self, name: str,
-            signature: Optional[Serializer[S]],
-            returns: Optional[Serializer[R]]
-    ) -> CommandBind[S, R, E]:
-        """
-        Добавить команду
-        @param name Имя команды для отладки
-        @param signature: Сигнатура (типы) входных аргументов
-        @param returns: тип выходного значения
-        """
-        ret = CommandBind(Command(Instruction(self._getNextInstructionCode(), signature, name), returns, self._respond_policy), self._stream)
+    def addCommand[S: Serializable, R: Serializable](self, name: str, signature: Optional[Serializer[S]], returns: Optional[Serializer[R]]) -> CommandBind[S, R, E]:
+        ret = CommandBind(Command(Instruction(self._getNextInstructionCode(), signature, name), returns, self._respond_policy), self._stream, self._mutex)
         self._commands.append(ret)
         return ret
 
@@ -71,64 +98,16 @@ class MasterProtocol[E: type[ResultEnum], P: Serializable, S: Serializable]:
         return self._connect_policy.command_code_primitive.pack(len(self._commands))
 
 
-def _test():
-    from io import BytesIO
-    from serialcmd.streams.mock import MockStream
-    from serialcmd.serializers import u8
+class SubProtocol[E: type[ResultEnum], P: Serializable, T: Serializable](_SupportAddCommands[E, P, T]):
+    """Под протокол"""
 
-    class TestError(ResultEnum):
-        ok = 0x00
-        bad = 0x01
+    def __init__(self, master: MasterProtocol[E, P, T], sub_name: str) -> None:
+        self._master = master
+        self._sub_name = sub_name
 
-        @classmethod
-        def getOk(cls) -> ResultEnum:
-            return cls.ok
+    def addCommand[S: Serializable, R: Serializable](self, name: str, signature: Optional[Serializer[S]], returns: Optional[Serializer[R]]) -> CommandBind[S, R, E]:
+        """Добавить команду в под-протокол"""
+        return self._master.addCommand(self._makeName(name), signature, returns)
 
-    _in = BytesIO()
-    _out = BytesIO()
-
-    # startup
-    u8.write(_in, True)
-
-    # 1
-    u8.write(_in, TestError.ok)
-
-    # 2
-    u8.write(_in, TestError.ok)
-
-    # 3
-    u8.write(_in, TestError.ok)
-    u8.write(_in, 255)
-
-    # 4
-    u8.write(_in, TestError.ok)
-    u8.write(_in, 100)
-
-    _in.seek(0)
-    stream = MockStream(_in, _out)
-
-    protocol = MasterProtocol[TestError, bool](RespondPolicy(TestError, u8), u8, stream, u8)
-
-    cmd_1 = protocol.addCommand("cmd_1", None, None)
-    cmd_2 = protocol.addCommand("cmd_2", u8, None)
-    cmd_3 = protocol.addCommand("cmd_3", None, u8)
-    cmd_4 = protocol.addCommand("cmd_4", u8, u8)
-
-    print("\n".join(map(str, protocol.getCommands())))
-
-    startup = protocol.begin()
-    print(startup)
-
-    cmd_1.send(None)
-    cmd_2.send(0x69)
-    print(cmd_3.send(None).unwrap())
-    print(cmd_4.send(0xBB).unwrap())
-
-    print(_out.getvalue().hex())
-    print(_in.getvalue().hex())
-
-    return
-
-
-if __name__ == '__main__':
-    _test()
+    def _makeName(self, name: str) -> str:
+        return f"{self._sub_name}_{name}"

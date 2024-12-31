@@ -1,10 +1,11 @@
 from typing import Callable
 
-from gen.vertex import Vec2f
 from ui.widgets.abc import ItemID
 from ui.widgets.abc import Placeable
 from ui.widgets.abc import VariableItem
 from ui.widgets.dpg.impl import DragLine
+
+type Vec2f = tuple[float, float]
 
 
 class BorderLinePair(Placeable, VariableItem[float]):

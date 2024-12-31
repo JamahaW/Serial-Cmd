@@ -32,7 +32,7 @@ class InputInt2D(Group, VariableItem[Vec2]):
             reset_button: bool = False,
             reset_button_label: str = "Сброс"
     ) -> None:
-        super().__init__(horizontal=is_horizontal)
+        super().__init__(is_horizontal=is_horizontal)
         self.__label = label
         self._on_change = on_change
 

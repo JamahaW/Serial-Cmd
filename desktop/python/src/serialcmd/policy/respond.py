@@ -21,7 +21,12 @@ class RespondPolicy[E: ResultEnum]:
 
     def read[R: Optional[Serializable]](self, stream: Stream, returns: Optional[Serializer[R]]) -> Result[R, E]:
         """Считать результат с потока (получить ответ)"""
-        code = self.result_enum(self.result_primitive.read(stream))
+        result_int = self.result_primitive.read(stream)
+
+        if result_int not in self.result_enum:
+            return Result.err(result_int)
+
+        code = self.result_enum(result_int)
 
         if code != self.result_enum.getOk():
             return Result.err(code)
