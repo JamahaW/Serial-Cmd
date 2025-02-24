@@ -25,12 +25,20 @@ class SpeedControllerTab(Tab):
         self._set_pwm_input = InputInt("setPWM", self._protocol.set_pwm.send, value_range=(-255, 255), step_fast=16, step=4)
         self._update_period_ms_input = InputInt("Update Period (ms)", value_range=(10, 1000), default_value=50, step_fast=50, step=10)
 
+        self._last_pos: int = 0
+
+    def _calcSpeed(self, dt: float) -> float:
+        current_speed = self._protocol.get_current_pos.send(None).unwrap(0)
+        speed = (current_speed - self._last_pos) / dt
+        self._last_pos = current_speed
+        return speed
+
     def _render(self) -> None:
         while True:
             try:
                 delta_time_seconds = self._update_period_ms_input.getValue() * 0.001
 
-                self._series.addValue(self._protocol.get_current_pos.send(None).unwrap(0))
+                self._series.addValue(self._calcSpeed(delta_time_seconds))
 
                 sleep(delta_time_seconds)
 
