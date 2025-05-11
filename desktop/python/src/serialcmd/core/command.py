@@ -27,7 +27,7 @@ class Command[S: Serializable, R: Serializable, E: ResultEnum]:
         return self.respond_policy.read(stream, self.returns)
 
     def __str__(self) -> str:
-        return f"{self.instruction} -> {self.respond_policy.toStr(self.returns)}"
+        return f"{self.instruction} -> {self.respond_policy.display(self.returns)}"
 
 
 def _test():
